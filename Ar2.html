@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AR 平面识别示例</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no">
+    <style>
+        body, html { margin: 0; height: 100%; }
+        #ar - container { width: 100%; height: 100%; }
+    </style>
+</head>
+<body>
+    <div id="ar-container"></div>
+
+    <!-- 引入 AR.js 和 Three.js -->
+    <script src="https://unpkg.com/ar.js@1.7.1/three.min.js"></script>
+    <script src="https://unpkg.com/ar.js@1.7.1/ar.js"></script>
+
+    <script>
+        // 初始化场景
+        const scene = new THREE.Scene();
+        const camera = new THREE.Camera();
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.getElementById('ar-container').appendChild(renderer.domElement);
+
+        // 创建 AR 控制器（平面检测）
+        const arController = new AR.Controller({
+            camera: camera,
+            type: 'pattern', // 平面检测类型
+            patternUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQImWNgYGBgAAAABQABh6FO1AAAAABJRU5ErkJggg==' // 空图案（触发平面检测）
+        });
+
+        // 添加文本标签
+        const textGeometry = new THREE.TextGeometry('你真棒', {
+            font: 'helvetiker',
+            size: 0.05,
+            height: 0.01
+        });
+        const textMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+        const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+        textMesh.position.set(0, 0.05, 0); // 调整文本位置
+
+        // 渲染循环
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            arController.update(); // 更新 AR 跟踪
+            
+            // 检测到平面时显示文本
+            if (arController.visible) {
+                textMesh.position.copy(arController.pose.position); // 跟随平面位置
+                scene.add(textMesh);
+            } else {
+                scene.remove(textMesh);
+            }
+
+            renderer.render(scene, camera);
+        }
+        animate();
+    </script>
+</body>
+</html>
