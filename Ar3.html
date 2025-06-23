@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>AR检测 - 你真棒</title>
+    <!-- 使用官方CDN确保稳定性 -->
+    <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.3.0/aframe/build/aframe-ar.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            overflow: hidden;
+            background: #0a1929;
+            height: 100vh;
+        }
+        
+        .header {
+            background: rgba(0, 0, 0, 0.5);
+            color: white;
+            padding: 12px 16px;
+            text-align: center;
+            z-index: 100;
+            position: relative;
+            backdrop-filter: blur(5px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        h1 {
+            font-size: 1.5rem;
+            background: linear-gradient(to right, #ff8a00, #da1b60);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            margin-bottom: 4px;
+        }
+        
+        .subtitle {
+            font-size: 0.9rem;
+            opacity: 0.8;
+            max-width: 600px;
+            margin: 0 auto;
+            line-height: 1.4;
+        }
+        
+        .container {
+            position: relative;
+            height: calc(100% - 70px);
+        }
+        
+        #ar-scene {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .instructions {
+            position: absolute;
+            bottom: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            color: white;
+            padding: 10px 15px;
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: 20px;
+            z-index: 10;
+            backdrop-filter: blur(10px);
+            animation: pulse 2s infinite;
+            max-width: 95%;
+            font-size: 0.9rem;
+        }
+        
+        .steps {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 6px;
+        }
+        
+        .step {
+            display: flex;
+            align-items: center;
+            padding: 4px 8px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            font-size: 0.8rem;
+        }
+        
+        .step-number {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            background: #ff8a00;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 20px;
+            margin-right: 4px;
+            font-weight: bold;
+            font-size: 0.8rem;
+        }
+        
+        .status-bar {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: rgba(0, 0, 0, 0.6);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 20px;
+            z-index: 20;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            backdrop-filter: blur(5px);
+        }
+        
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #ff4d4d;
+            margin-right: 6px;
+        }
+        
+        .status-indicator.active {
+            background: #00ff00;
+            box-shadow: 0 0 8px #00ff00;
+        }
+        
+        .arjs-loader {
+            height: 100%;
+            width: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            background-color: rgba(0, 0, 0, 0.9);
+            z-index: 9999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+        
+        .loading-spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 4px solid #4facfe;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 15px;
+        }
+        
+        .loading-text {
+            text-align: center;
+            font-size: 1rem;
+            color: white;
+            max-width: 80%;
+        }
+        
+        .tip {
+            margin-top: 15px;
+            font-size: 0.85rem;
+            color: #aaa;
+        }
+        
+        .ar-logo {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 0.75rem;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+        }
+        
+        .ar-logo svg {
+            width: 16px;
+            height: 16px;
+            margin-right: 5px;
+            fill: #4facfe;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(79, 172, 254, 0.4); }
+            70% { box-shadow: 0 0 0 8px rgba(79, 172, 254, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(79, 172, 254, 0); }
+        }
+        
+        .debug {
+            position: absolute;
+            bottom: 40px;
+            left: 15px;
+            color: white;
+            font-size: 0.75rem;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 5px 10px;
+            border-radius: 10px;
+            z-index: 10;
+        }
+        
+        /* 响应式设计 */
+        @media (max-width: 480px) {
+            .header {
+                padding: 10px;
+            }
+            
+            h1 {
+                font-size: 1.3rem;
+            }
+            
+            .subtitle {
+                font-size: 0.8rem;
+            }
+            
+            .instructions {
+                padding: 8px 12px;
+                font-size: 0.8rem;
+            }
+            
+            .step {
+                font-size: 0.75rem;
+                padding: 3px 6px;
+            }
+            
+            .step-number {
+                width: 18px;
+                height: 18px;
+                line-height: 18px;
+                font-size: 0.75rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>AR平面检测</h1>
+        <p class="subtitle">移动手机扫描平面，检测到平面后显示文字</p>
+    </div>
+    
+    <div class="container">
+        <div class="status-bar">
+            <span class="status-indicator"></span>
+            <span class="status-text">等待平面检测...</span>
+        </div>
+        
+        <div class="arjs-loader">
+            <div class="loading-spinner"></div>
+            <div class="loading-text">正在加载AR体验，请稍候...</div>
+            <div class="tip">首次加载可能需要较长时间，请确保良好的光线环境</div>
+        </div>
+        
+        <!-- 更新AR场景配置 -->
+        <a-scene 
+            id="ar-scene"
+            vr-mode-ui="enabled: false"
+            arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3;"
+            renderer="logarithmicDepthBuffer: true; precision: medium;"
+        >
+            <!-- 使用正确的相机设置 -->
+            <a-camera gps-camera rotation-reader></a-camera>
+            
+            <!-- 平面检测实体 -->
+            <a-entity cursor="rayOrigin: mouse" raycaster="objects: .plane"></a-entity>
+            
+            <!-- 检测平面 -->
+            <a-entity id="plane" class="plane" geometry="primitive: circle; radius: 0.5" 
+                     material="color: #7BC8A4; shader: flat; opacity: 0.4" 
+                     rotation="-90 0 0" 
+                     visible="false">
+            </a-entity>
+            
+            <!-- 检测到平面时显示的3D文字 -->
+            <a-entity 
+                id="text-entity"
+                text="value: 你真棒; color: #FF3366; align: center; width: 4; font: https://cdn.aframe.io/fonts/Exo2SemiBold.fnt"
+                position="0 0.5 0"
+                scale="2.5 2.5 2.5"
+                visible="false"
+            >
+                <!-- 添加动画效果 -->
+                <a-animation 
+                    attribute="rotation"
+                    from="0 0 0"
+                    to="0 360 0"
+                    dur="8000"
+                    repeat="indefinite"
+                    easing="linear"
+                ></a-animation>
+                <a-animation 
+                    attribute="scale"
+                    from="2 2 2"
+                    to="3 3 3"
+                    dur="2000"
+                    repeat="indefinite"
+                    direction="alternate"
+                    easing="easeInOutSine"
+                ></a-animation>
+            </a-entity>
+        </a-scene>
+        
+        <div class="instructions">
+            移动手机寻找平面
+            <div class="steps">
+                <div class="step">
+                    <span class="step-number">1</span> 允许相机
+                </div>
+                <div class="step">
+                    <span class="step-number">2</span> 移动手机
+                </div>
+                <div class="step">
+                    <span class="step-number">3</span> 寻找平面
+                </div>
+            </div>
+        </div>
+        
+        <div class="ar-logo">
+            <svg viewBox="0 0 24 24">
+                <path d="M5.5,7A1.5,1.5 0 0,1 4,5.5A1.5,1.5 0 0,1 5.5,4A1.5,1.5 0 0,1 7,5.5A1.5,1.5 0 0,1 5.5,7M21.41,11.58L12.41,2.58C12.05,2.22 11.55,2 11,2H4C2.89,2 2,2.89 2,4V11C2,11.55 2.22,12.05 2.59,12.41L11.58,21.41C11.95,21.77 12.45,22 13,22C13.55,22 14.05,21.77 14.41,21.41L21.41,14.41C21.78,14.05 22,13.55 22,13C22,12.44 21.77,11.94 21.41,11.58Z"></path>
+            </svg>
+            基于AR.js技术
+        </div>
+        
+        <div class="debug">AR.js v3.3.0</div>
+    </div>
+
+    <script>
+        // 当场景加载完成后执行
+        document.querySelector('a-scene').addEventListener('loaded', function() {
+            // 隐藏加载界面
+            document.querySelector('.arjs-loader').style.display = 'none';
+            
+            // 获取状态元素
+            const statusIndicator = document.querySelector('.status-indicator');
+            const statusText = document.querySelector('.status-text');
+            
+            // 获取文字实体
+            const textEntity = document.getElementById('text-entity');
+            const planeEntity = document.getElementById('plane');
+            
+            // 监听AR平面检测事件
+            planeEntity.addEventListener('ar-hit-test-start', function() {
+                statusText.textContent = '正在检测平面...';
+            });
+            
+            planeEntity.addEventListener('ar-hit-test-achieved', function() {
+                // 显示文字和平面
+                textEntity.setAttribute('visible', 'true');
+                planeEntity.setAttribute('visible', 'true');
+                
+                // 更新状态
+                statusIndicator.classList.add('active');
+                statusText.textContent = '平面已检测到！';
+                
+                // 简化UI
+                document.querySelector('.instructions').style.display = 'none';
+            });
+            
+            planeEntity.addEventListener('ar-hit-test-lost', function() {
+                // 隐藏文字和平面
+                textEntity.setAttribute('visible', 'false');
+                planeEntity.setAttribute('visible', 'false');
+                
+                // 更新状态
+                statusIndicator.classList.remove('active');
+                statusText.textContent = '寻找平面中...';
+                
+                // 显示使用指南
+                document.querySelector('.instructions').style.display = 'block';
+            });
+        });
+        
+        // 处理错误
+        document.querySelector('a-scene').addEventListener('error', function(e) {
+            console.error('AR场景错误:', e.detail);
+            document.querySelector('.status-text').textContent = '错误: ' + e.detail;
+        });
+        
+        // 处理移动设备上的全屏请求
+        function requestFullscreen() {
+            const element = document.documentElement;
+            if (element.requestFullscreen) {
+                element.requestFullscreen();
+            } else if (element.mozRequestFullScreen) {
+                element.mozRequestFullScreen();
+            } else if (element.webkitRequestFullscreen) {
+                element.webkitRequestFullscreen();
+            } else if (element.msRequestFullscreen) {
+                element.msRequestFullscreen();
+            }
+        }
+        
+        // 点击页面时请求全屏（移动设备需要）
+        document.addEventListener('click', requestFullscreen);
+        
+        // 添加键盘快捷键用于调试
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'd') {
+                document.querySelector('.debug').style.display = 
+                    document.querySelector('.debug').style.display === 'none' ? 'block' : 'none';
+            }
+        });
+    </script>
+</body>
+</html>
