@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>AR平面检测体验</title>
+    <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #1a2a6c);
+            color: white;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .container {
+            width: 100%;
+            max-width: 1000px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            height: 100vh;
+        }
+        
+        header {
+            text-align: center;
+            padding: 20px 0;
+            width: 100%;
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+        }
+        
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        .ar-container {
+            width: 100%;
+            flex-grow: 1;
+            position: relative;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+            max-height: 70vh;
+        }
+        
+        #ar-scene {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .status-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 10;
+            transition: opacity 0.5s;
+        }
+        
+        .status-text {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 20px;
+            text-align: center;
+            color: #4CAF50;
+            text-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+        }
+        
+        .detected .status-text {
+            animation: pulse 1.5s infinite;
+        }
+        
+        .instructions {
+            font-size: 1.1rem;
+            max-width: 80%;
+            text-align: center;
+            line-height: 1.6;
+            margin-bottom: 30px;
+        }
+        
+        .button {
+            background: #2196F3;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 1.1rem;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 10px rgba(33, 150, 243, 0.3);
+        }
+        
+        .button:hover {
+            background: #0b7dda;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(33, 150, 243, 0.4);
+        }
+        
+        .button:active {
+            transform: translateY(1px);
+        }
+        
+        .device-support {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+            gap: 40px;
+        }
+        
+        .device {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .device-icon {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        
+        .device-name {
+            font-size: 1rem;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 4px solid #fff;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+        
+        .loading-text {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        footer {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .subtitle {
+                font-size: 1rem;
+            }
+            
+            .status-text {
+                font-size: 2rem;
+            }
+            
+            .instructions {
+                font-size: 1rem;
+            }
+            
+            .device-support {
+                flex-direction: column;
+                gap: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>AR平面检测体验</h1>
+            <p class="subtitle">移动设备摄像头扫描平面表面，当检测到平面时将显示"成功"提示</p>
+        </header>
+        
+        <div class="ar-container">
+            <div id="ar-scene">
+                <a-scene 
+                    embedded 
+                    arjs='sourceType: webcam; detectionMode: mono; debugUIEnabled: false;' 
+                    vr-mode-ui="enabled: false"
+                    renderer="logarithmicDepthBuffer: true; precision: medium;"
+                >
+                    <a-camera gps-camera rotation-reader></a-camera>
+                    
+                    <!-- 平面检测成功时显示的文字 -->
+                    <a-entity arjs-plane-detect>
+                        <a-text 
+                            id="success-text"
+                            value="成功" 
+                            position="0 0.5 0" 
+                            rotation="-90 0 0"
+                            align="center" 
+                            color="#4CAF50" 
+                            scale="1.5 1.5 1.5"
+                            opacity="0"
+                        ></a-text>
+                    </a-entity>
+                    
+                    <!-- AR场景标记 -->
+                    <a-marker-camera preset="hiro"></a-marker-camera>
+                </a-scene>
+            </div>
+            
+            <div id="status-overlay" class="status-overlay">
+                <div class="status-text">正在启动AR体验...</div>
+                <p class="instructions">请允许访问您的摄像头，然后缓慢移动手机扫描平面表面</p>
+                <div class="loading-text">
+                    <div class="loading"></div>
+                    <span>初始化中</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="device-support">
+            <div class="device">
+                <div class="device-icon">📱</div>
+                <div class="device-name">手机支持</div>
+            </div>
+            <div class="device">
+                <div class="device-icon">💻</div>
+                <div class="device-name">电脑支持</div>
+            </div>
+        </div>
+        
+        <footer>
+            <p>使用A-Frame和AR.js构建 | 技术支持：WebXR API</p>
+        </footer>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const scene = document.querySelector('a-scene');
+            const statusOverlay = document.getElementById('status-overlay');
+            const successText = document.getElementById('success-text');
+            
+            // 检测设备类型
+            const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+            const deviceType = isMobile ? '手机' : '电脑';
+            
+            // 更新提示信息
+            const instructions = document.querySelector('.instructions');
+            instructions.textContent = isMobile 
+                ? '请缓慢移动手机扫描平面表面（如桌面、地板等）' 
+                : '请缓慢移动电脑摄像头扫描平面表面（如桌面、墙面等）';
+            
+            // 处理AR场景加载
+            scene.addEventListener('loaded', () => {
+                setTimeout(() => {
+                    statusOverlay.querySelector('.status-text').textContent = '正在扫描平面...';
+                    statusOverlay.querySelector('.loading-text span').textContent = '移动设备扫描平面';
+                }, 2000);
+            });
+            
+            // 平面检测成功处理
+            scene.addEventListener('markerFound', () => {
+                statusOverlay.classList.add('detected');
+                statusOverlay.querySelector('.status-text').textContent = '平面检测成功!';
+                statusOverlay.querySelector('.loading-text').classList.add('hidden');
+                
+                // 显示"成功"文字
+                successText.setAttribute('opacity', '1');
+                
+                // 添加动画效果
+                successText.setAttribute('animation', 'property: scale; from: 0.5 0.5 0.5; to: 1.5 1.5 1.5; dur: 1500; loop: true; dir: alternate;');
+            });
+            
+            // 平面检测丢失处理
+            scene.addEventListener('markerLost', () => {
+                statusOverlay.querySelector('.status-text').textContent = '正在扫描平面...';
+                statusOverlay.querySelector('.loading-text').classList.remove('hidden');
+                statusOverlay.classList.remove('detected');
+                
+                // 隐藏"成功"文字
+                successText.setAttribute('opacity', '0');
+                successText.removeAttribute('animation');
+            });
+            
+            // 处理摄像头访问错误
+            scene.addEventListener('camera-error', (error) => {
+                statusOverlay.querySelector('.status-text').textContent = '摄像头访问错误';
+                statusOverlay.querySelector('.loading-text').classList.add('hidden');
+                statusOverlay.querySelector('.instructions').innerHTML = 
+                    '请确保您已授予摄像头访问权限<br>或检查您的设备是否支持WebXR';
+            });
+        });
+    </script>
+</body>
+</html>
